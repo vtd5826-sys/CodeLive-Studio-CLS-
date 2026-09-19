@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>CodeLive Studio (CLS)</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #1e1e1e; color: #fff; display: flex; flex-direction: column; height: 100vh; }
+        #auth-bar { background: #2d2d2d; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+        .pane { flex: 1; display: flex; flex-direction: column; padding: 10px; }
+        textarea { flex: 1; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; font-family: monospace; resize: none; }
+        iframe { flex: 1; background: #fff; border: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Khu vực Đăng nhập / Tạo tài khoản -->
+    <div id="auth-bar">
+        <span id="user-welcome">Chưa đăng nhập</span>
+        <div>
+            <button onclick="handleGoogleAuth()">Đăng nhập / Tạo tài khoản bằng Google</button>
+            <button onclick="handleLogout()" id="logout-btn" style="display:none;">Đăng xuất</button>
+        </div>
+    </div>
+
+    <!-- Mô hình CodeLive Studio (CLS) -->
+    <div class="workspace">
+        <div class="pane">
+            <h3>CLS Editor (Nhập mã HTML)</h3>
+            <textarea id="code-input" placeholder="Nhập một hoặc nhiều đoạn mã HTML..." oninput="runCLS()"><h1>Chào mừng đến với CodeLive Studio (CLS)</h1></textarea>
+        </div>
+        <div class="pane">
+            <h3>CLS Live Preview</h3>
+            <iframe id="preview"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Kiểm tra bộ nhớ máy (LocalStorage) khi tải trang
+        window.onload = function() {
+            const savedName = localStorage.getItem('cls_username');
+            if (savedName) {
+                document.getElementById('user-welcome').innerText = 'Xin chào, ' + savedName;
+                document.getElementById('logout-btn').style.display = 'inline-block';
+            }
+            runCLS();
+        };
+
+        async function handleGoogleAuth() {
+            const email = prompt("Nhập email Google của bạn:");
+            const name = prompt("Đặt tên hiển thị của bạn:");
+            const googleId = "google_id_sample";
+
+            // Kiểm tra xác minh đăng nhập trước
+            let res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, googleId })
+            });
+            let data = await res.json();
+
+            if (!data.success) {
+                // Nếu chưa có tài khoản thì tiến hành tạo mới
+                res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name, googleId })
+                });
+                data = await res.json();
+            }
+
+            if (data.success) {
+                localStorage.setItem('cls_username', data.user.name);
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('cls_username');
+            location.reload();
+        }
+
+        // Mô hình chạy CodeLive Studio (CLS)
+        function runCLS() {
+            const code = document.getElementById('code-input').value;
+            const iframe = document.getElementById('preview');
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(code);
+            doc.close();
+        }
+    </script>
+</body>
+</html>
